@@ -3,14 +3,15 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Road Chainage App — Fixed v3.1</title>
+<title>Road Chainage App — v4.7 (ROW + CSV-only)</title>
 <style>
   body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:#0b1320;color:#e6eef7}
-  .wrap{max-width:960px;margin:32px auto;padding:0 16px}
-  .card{margin-top:16px;background:#141b2dcc;border:1px solid #ffffff1f;border-radius:14px;box-shadow:0 10px 30px #0006}
+  .wrap{max-width:1100px;margin:28px auto;padding:0 16px}
+  h2{margin:0 0 8px}
+  .card{margin-top:14px;background:#141b2dcc;border:1px solid #ffffff1a;border-radius:14px;box-shadow:0 10px 30px #0006}
   .inner{padding:16px}
   .row{display:grid;grid-template-columns:1fr;gap:12px}
-  @media(min-width:720px){.row{grid-template-columns:1.3fr 1fr 1fr}}
+  @media(min-width:940px){.row{grid-template-columns:1.2fr 1fr 1fr 1fr}}
   label{display:block;font-weight:700;margin-bottom:6px}
   input,select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #ffffff20;background:#0e1524;color:#e6eef7}
   input[type=file]{border-style:dashed}
@@ -22,7 +23,7 @@
   button:disabled{opacity:.55;cursor:not-allowed}
   .status{margin-top:10px;padding:10px 12px;border-radius:10px;background:#0d1526bb;border:1px solid #ffffff1f;white-space:pre-wrap}
   .ok{color:#22c55e}.warn{color:#f59e0b}.bad{color:#f43f5e}
-  .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px}
+  .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:10px}
   .stat{background:#0e1524;border:1px solid #ffffff1f;border-radius:10px;padding:10px 12px}
   .small{font-size:12px;color:#8aa0b6}
 </style>
@@ -30,8 +31,8 @@
 </head>
 <body>
 <div class="wrap">
-  <h2>Road Chainage App — Fixed v3.1</h2>
-  <p class="small">LineString आणि gx:Track दोन्ही चालतील. iPhone/Safari साठी खाली <b>Save</b> links दिले आहेत.</p>
+  <h2>Road Chainage App — v4.7</h2>
+  <p class="small">UI update: <b>Carriageway Width</b> → <b>ROW (m)</b>. Structures input now <b>CSV upload only</b> (no textbox).</p>
 
   <div class="card"><div class="inner">
     <div class="row">
@@ -48,9 +49,6 @@
         <label>Start Chainage</label>
         <input id="startCh" type="text" value="0+000" placeholder="0+000 / 7250 / 7km+250"/>
       </div>
-    </div>
-
-    <div class="row" style="margin-top:8px;grid-template-columns:1fr 1fr 1fr">
       <div>
         <label>Label Format</label>
         <select id="labelFmt">
@@ -58,28 +56,47 @@
           <option value="km+m" selected>km+m (7+250)</option>
         </select>
       </div>
+    </div>
+
+    <div class="row" style="margin-top:8px;grid-template-columns:1fr 1fr 1fr 1fr">
       <div>
-        <label>Include</label>
-        <select id="opts">
-          <option value="startEnd">Start & End</option>
-          <option value="startOnly">Start only</option>
-          <option value="endOnly">End only</option>
-          <option value="none">Only intervals</option>
+        <label>Road Name</label>
+        <input id="roadName" type="text" value="Project Road"/>
+      </div>
+      <div>
+        <label>ROW (m)</label>
+        <input id="rowWidth" type="number" min="0" step="0.1" value="30.0"/>
+        <div class="small">Offset lines = ± ROW/2 from centerline</div>
+      </div>
+      <div>
+        <label>Show km labels with name?</label>
+        <select id="kmName">
+          <option value="yes" selected>Yes (every 1 km)</option>
+          <option value="no">No</option>
         </select>
       </div>
       <div>
         <label>Cross Ticks (⊥) length (m)</label>
         <input id="tickLen" type="number" min="0" step="1" value="12"/>
-        <div class="small">0 केले तर ticks बंद.</div>
+        <div class="small">0 केल्यास ticks बंद.</div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:8px;grid-template-columns:1fr">
+      <div>
+        <label>Structures CSV (Upload only)</label>
+        <input id="structFile" type="file" accept=".csv,text/csv"/>
+        <div class="small">Format (with/without header): <code>chainage,type,name,notes</code></div>
       </div>
     </div>
 
     <div class="btns">
-      <button id="genBtn" class="primary">Generate</button>
-      <button id="dlKml" class="secondary" disabled>Download KML</button>
-      <button id="dlKmz" class="ghost" disabled>Download KMZ</button>
+      <button id="genBtn" type="button" class="primary">Generate</button>
+      <button id="dlKml" type="button" class="secondary" disabled>Download KML</button>
+      <button id="dlKmz" type="button" class="ghost" disabled>Download KMZ</button>
       <a id="saveKml" class="btn secondary" download="chainage.kml" style="display:none">Save KML</a>
       <a id="saveKmz" class="btn ghost" download="chainage.kmz" style="display:none">Save KMZ</a>
+      <button id="selfTest" type="button" class="ghost" title="Developer: run quick self-tests">Run Self‑Test</button>
     </div>
 
     <div id="status" class="status">Status: Ready</div>
@@ -88,6 +105,7 @@
       <div class="stat"><div class="small">Path length</div><b id="lenKm">–</b></div>
       <div class="stat"><div class="small">Interval points</div><b id="ptCount">–</b></div>
       <div class="stat"><div class="small">Total markers</div><b id="mkCount">–</b></div>
+      <div class="stat"><div class="small">Structures</div><b id="stCount">–</b></div>
     </div>
   </div></div>
 </div>
@@ -95,136 +113,106 @@
 <script>
 (function(){
   const $=id=>document.getElementById(id);
-  const file=$('file'), interval=$('interval'), startCh=$('startCh'), opts=$('opts'), labelFmt=$('labelFmt');
+  const file=$('file'), interval=$('interval'), startCh=$('startCh'), labelFmt=$('labelFmt');
+  const roadName=$('roadName'), rowWidthEl=$('rowWidth'), kmName=$('kmName');
   const tickLen=$('tickLen');
+  const structFile=$('structFile');
   const genBtn=$('genBtn'), dlKml=$('dlKml'), dlKmz=$('dlKmz'), saveKml=$('saveKml'), saveKmz=$('saveKmz');
-  const statusEl=$('status'), lenKm=$('lenKm'), ptCount=$('ptCount'), mkCount=$('mkCount');
-  let resultKml=null, kmlUrl=null, kmzUrl=null; let coords=null;
+  const statusEl=$('status'), lenKm=$('lenKm'), ptCount=$('ptCount'), mkCount=$('mkCount'), stCount=$('stCount');
+  const selfTestBtn=$('selfTest');
 
-  // ---- Math helpers ----
-  const R=6371000;              // meters
-  const RAD=Math.PI/180;         // radians per degree
-  const DEG=180/Math.PI;         // degrees per radian
-  const toRad=d=>d*RAD;
-  const toDeg=r=>r*DEG;
-  const pad=(n,w)=>String(n).padStart(w,'0');
+  let resultKml=null; let coords=null; let csvCache="";
 
-  function setStatus(t,c){ statusEl.className='status'; if(c) statusEl.classList.add(c); statusEl.textContent=t; }
+  function setStatus(message, type){ statusEl.textContent=message; statusEl.className='status'+(type?(' '+type):''); }
 
-  function hdist(a,b){
-    const dLat=toRad(b.lat-a.lat), dLon=toRad(b.lon-a.lon);
-    const la=toRad(a.lat), lb=toRad(b.lat);
-    const s=Math.sin(dLat/2)**2 + Math.cos(la)*Math.cos(lb)*Math.sin(dLon/2)**2;
-    return 2*R*Math.atan2(Math.sqrt(s),Math.sqrt(1-s));
-  }
-  function plen(cs){ let s=0; for(let i=1;i<cs.length;i++) s+=hdist(cs[i-1],cs[i]); return s; }
-  function pAt(cs,dist){ if(dist<=0) return cs[0]; let acc=0; for(let i=1;i<cs.length;i++){ const seg=hdist(cs[i-1],cs[i]); if(acc+seg>=dist){ const f=(dist-acc)/seg; return {lat:cs[i-1].lat+(cs[i].lat-cs[i-1].lat)*f, lon:cs[i-1].lon+(cs[i].lon-cs[i-1].lon)*f}; } acc+=seg;} return cs[cs.length-1]; }
-  function segIndexAt(cs,dist){ if(dist<=0) return 0; let acc=0; for(let i=1;i<cs.length;i++){ const seg=hdist(cs[i-1],cs[i]); if(acc+seg>=dist) return i-1; acc+=seg; } return cs.length-2; }
-  function bearing(a,b){
-    const y=Math.sin(toRad(b.lon-a.lon))*Math.cos(toRad(b.lat));
-    const x=Math.cos(toRad(a.lat))*Math.sin(toRad(b.lat)) - Math.sin(toRad(a.lat))*Math.cos(toRad(b.lat))*Math.cos(toRad(b.lon-a.lon));
-    return (Math.atan2(y,x)*DEG + 360)%360; // degrees
-  }
-  function offsetPoint(p, dxE, dyN){ // meters east/north → degrees
-    const dLat = toDeg(dyN/R);
-    const dLon = toDeg(dxE/(R*Math.cos(toRad(p.lat))));
-    return { lat: p.lat + dLat, lon: p.lon + dLon };
-  }
+  // Math helpers
+  const R=6371000, RAD=Math.PI/180, DEG=180/Math.PI;
+  const toRad=d=>d*RAD, toDeg=r=>r*DEG; const pad=(n,w)=>String(n).padStart(w,'0');
+  const hdist=(a,b)=>{ const dLat=toRad(b.lat-a.lat), dLon=toRad(b.lon-a.lon); const la=toRad(a.lat), lb=toRad(b.lat); const s=Math.sin(dLat/2)**2 + Math.cos(la)*Math.cos(lb)*Math.sin(dLon/2)**2; return 2*R*Math.atan2(Math.sqrt(s),Math.sqrt(1-s)); };
+  const plen=(cs)=>{ let s=0; for(let i=1;i<cs.length;i++) s+=hdist(cs[i-1],cs[i]); return s; };
+  const pAt=(cs,dist)=>{ if(dist<=0) return cs[0]; let acc=0; for(let i=1;i<cs.length;i++){ const seg=hdist(cs[i-1],cs[i]); if(acc+seg>=dist){ const f=(dist-acc)/seg; return {lat:cs[i-1].lat+(cs[i].lat-cs[i-1].lat)*f, lon:cs[i-1].lon+(cs[i].lon-cs[i-1].lon)*f}; } acc+=seg;} return cs[cs.length-1]; };
+  const segIndexAt=(cs,dist)=>{ if(dist<=0) return 0; let acc=0; for(let i=1;i<cs.length;i++){ const seg=hdist(cs[i-1],cs[i]); if(acc+seg>=dist) return i-1; acc+=seg; } return cs.length-2; };
+  const bearing=(a,b)=>{ const y=Math.sin(toRad(b.lon-a.lon))*Math.cos(toRad(b.lat)); const x=Math.cos(toRad(a.lat))*Math.sin(toRad(b.lat)) - Math.sin(toRad(a.lat))*Math.cos(toRad(b.lat))*Math.cos(toRad(b.lon-a.lon)); return (Math.atan2(y,x)*DEG + 360)%360; };
+  const offsetPoint=(p, dxE, dyN)=>{ const dLat = toDeg(dyN/R); const dLon = toDeg(dxE/(R*Math.cos(toRad(p.lat)))); return { lat: p.lat + dLat, lon: p.lon + dLon }; };
+  function offsetPolyline(cs, half){ if(half<=0) return {left:[], right:[]}; const left=[], right=[]; for(let i=0;i<cs.length;i++){ const a = cs[Math.max(0,i-1)], b = cs[i], c = cs[Math.min(cs.length-1,i+1)]; const ang1 = i===0 ? bearing(b,c) : bearing(a,b); const ang2 = i===cs.length-1 ? bearing(a,b) : bearing(b,c); const dir = (ang1+ang2)/2; const n = (dir+90)%360; const dx = d=> d*Math.sin(n*RAD), dy = d=> d*Math.cos(n*RAD); left.push( offsetPoint(b, dx(half),  dy(half)) ); right.push( offsetPoint(b, dx(-half), dy(-half)) ); } return {left, right}; }
 
-  // ---- Parsing helpers ----
+  // parsing
   function parseMeters(s){ if(!s) return 0; const r=String(s).trim(); if(r.includes('+')){ const [km,m]=r.split('+'); return Math.round((parseFloat(km)||0)*1000 + (parseFloat(m)||0)); } if(/km/i.test(r)){ return Math.round((parseFloat(r)||0)*1000); } return Math.round(parseFloat(r)||0); }
-  function fmt(m){ if(labelFmt.value==='meters') return String(Math.round(m)); const M=Math.round(m), km=Math.floor(M/1000), r=M-km*1000; return `${km}+${pad(r,3)}`; }
+  function fmt(m, want=labelFmt.value){ if(want==='meters') return String(Math.round(m)); const M=Math.round(m), km=Math.floor(M/1000), r=M-km*1000; return `${km}+${pad(r,3)}`; }
   function esc(x){ return String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;'); }
-
-  function parseKmlText(text){
-    const doc=new DOMParser().parseFromString(text,'text/xml');
-    const perr=doc.querySelector('parsererror'); if(perr) throw new Error('Invalid KML: '+perr.textContent);
-    let best=null;
-    // LineStrings
-    for(const ls of doc.getElementsByTagName('LineString')){
-      const c=ls.getElementsByTagName('coordinates')[0]; if(!c) continue;
-      const toks=(c.textContent||'').trim().split(/\s+/);
-      const arr=[]; for(const t of toks){ const parts=t.split(','); const lon=Number(parts[0]); const lat=Number(parts[1]); if(isFinite(lat)&&isFinite(lon)) arr.push({lat,lon}); }
-      if(arr.length>1){ const L=plen(arr); if(!best||L>best.len) best={coords:arr,len:L}; }
-    }
-    // gx:Track
+  function parseKmlText(text){ const doc=new DOMParser().parseFromString(text,'text/xml'); const perr=doc.querySelector('parsererror'); if(perr) throw new Error('Invalid KML: '+perr.textContent); let best=null; for(const ls of doc.getElementsByTagName('LineString')){ const c=ls.getElementsByTagName('coordinates')[0]; if(!c) continue; const toks=(c.textContent||'').trim().split(/\s+/); const arr=[]; for(const t of toks){ const [lon,lat]=t.split(',').map(Number); if(isFinite(lat)&&isFinite(lon)) arr.push({lat,lon}); } if(arr.length>1){ const L=plen(arr); if(!best||L>best.len) best={coords:arr,len:L}; } }
     const ns='http://www.google.com/kml/ext/2.2';
-    for(const tr of doc.getElementsByTagNameNS(ns,'Track')){
-      const arr=[]; for(const c of tr.getElementsByTagNameNS(ns,'coord')){ const parts=(c.textContent||'').trim().split(/\s+/); const lon=Number(parts[0]); const lat=Number(parts[1]); if(isFinite(lat)&&isFinite(lon)) arr.push({lat,lon}); }
-      if(arr.length>1){ const L=plen(arr); if(!best||L>best.len) best={coords:arr,len:L}; }
-    }
-    if(!best) throw new Error('No Path/Track in file');
-    return best.coords;
+    for(const tr of doc.getElementsByTagNameNS(ns,'Track')){ const arr=[]; for(const c of tr.getElementsByTagNameNS(ns,'coord')){ const [lon,lat]=c.textContent.trim().split(/\s+/).map(Number); if(isFinite(lat)&&isFinite(lon)) arr.push({lat,lon}); } if(arr.length>1){ const L=plen(arr); if(!best||L>best.len) best={coords:arr,len:L}; } }
+    if(!best) throw new Error('No Path/Track in file'); return best.coords; }
+
+  // CSV helpers
+  function smartSplitCSVLine(line){ const out=[]; let cur=''; let inQ=false; for(let i=0;i<line.length;i++){ const ch=line[i]; if(ch==='\"'){ if(inQ && line[i+1]==='\"'){ cur+='\"'; i++; } else { inQ=!inQ; } } else if(ch===',' && !inQ){ out.push(cur.trim()); cur=''; } else { cur+=ch; } } out.push(cur.trim()); return out; }
+  function parseStructuresCSV(text){ if(!text) return []; const lines=text.split(/\r?\n/).filter(s=>s.trim().length>0); if(lines.length===0) return []; let startIdx=0; const first=smartSplitCSVLine(lines[0]); if(first.length && isNaN(parseFloat(first[0])) && !/^\d+\+\d+$/.test(first[0])) startIdx=1; const out=[]; for(let i=startIdx;i<lines.length;i++){ const cols=smartSplitCSVLine(lines[i]); const ch=cols[0]; const type=cols[1]||'Structure'; const name=cols[2]||''; const notes=cols[3]||''; if(!ch) continue; out.push({chTxt: ch.trim(), type: type.trim(), name: name.trim(), notes: notes.trim()}); } return out; }
+
+  // KML (structures visible styles)
+  function buildKml({markers, ticks, path, left, right, kmLabels, roadName, structs}){
+    const styles=`\n<Style id=\"path\"><LineStyle><color>ff33a0ff</color><width>3</width></LineStyle></Style>\n<Style id=\"off\"><LineStyle><color>ff22bb22</color><width>2</width></LineStyle></Style>\n<Style id=\"label\"><IconStyle><scale>0.8</scale></IconStyle><LabelStyle><scale>1.3</scale><color>ffffffff</color></LabelStyle></Style>\n<Style id=\"tick\"><LineStyle><color>ff0000ff</color><width>2</width></LineStyle></Style>\n<Style id=\"struct\"><IconStyle><scale>0.9</scale><Icon><href>http://maps.google.com/mapfiles/kml/paddle/red-circle.png</href></Icon></IconStyle><LabelStyle><scale>1.2</scale><color>ff00ffff</color></LabelStyle><BalloonStyle><text><![CDATA[<b>$[name]</b><br/>Type: $[type]<br/>Name: $[name]<br/>Chainage (m): $[chainage_m]<br/><hr/>$[description]]]></text></BalloonStyle></Style>`;
+    const line = (name, style, pts)=>`\n<Placemark><visibility>1</visibility><name>${esc(name)}</name><styleUrl>#${style}</styleUrl><LineString><tessellate>1</tessellate><coordinates>${pts.map(p=>`${p.lon.toFixed(6)},${p.lat.toFixed(6)},0`).join(' ')}</coordinates></LineString></Placemark>`;
+    const pathPm = path?.length? line('Centerline','path', path):'';
+    const leftPm = left?.length? line('ROW Left','off', left):'';
+    const rightPm = right?.length? line('ROW Right','off', right):'';
+    const labs = markers.map(m=>`\n<Placemark><visibility>1</visibility><name>${esc(m.name)}</name><styleUrl>#label</styleUrl><Point><coordinates>${m.lon.toFixed(6)},${m.lat.toFixed(6)},0</coordinates></Point></Placemark>`).join('');
+    const kmLabs = kmLabels.map(m=>`\n<Placemark><visibility>1</visibility><name>${esc(m.name)}</name><styleUrl>#label</styleUrl><Point><coordinates>${m.lon.toFixed(6)},${m.lat.toFixed(6)},0</coordinates></Point></Placemark>`).join('');
+    const tickPl = ticks.map(t=>`\n<Placemark><visibility>1</visibility><styleUrl>#tick</styleUrl><LineString><tessellate>1</tessellate><coordinates>${t.map(p=>`${p.lon.toFixed(6)},${p.lat.toFixed(6)},0`).join(' ')}</coordinates></LineString></Placemark>`).join('');
+    const structPl = structs.map(s=>`\n<Placemark><visibility>1</visibility><name>${esc(`${fmt(s.ch)} — ${s.type}${s.name?(' — '+s.name):''}`)}</name><styleUrl>#struct</styleUrl><Point><coordinates>${s.lon.toFixed(6)},${s.lat.toFixed(6)},0</coordinates></Point><description>${esc(s.notes||'')}</description><ExtendedData><Data name=\"type\"><value>${esc(s.type)}</value></Data><Data name=\"name\"><value>${esc(s.name||'')}</value></Data><Data name=\"chainage_m\"><value>${s.ch}</value></Data></ExtendedData></Placemark>`).join('');
+    const structuresFolder = structs.length?`\n<Folder><name>Structures</name><open>1</open>${structPl}</Folder>`:'';
+    return `<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<kml xmlns=\"http://www.opengis.net/kml/2.2\" xmlns:gx=\"http://www.google.com/kml/ext/2.2\"><Document><name>${esc(roadName||'Chainage')}</name>${styles}${pathPm}${leftPm}${rightPm}${labs}${kmLabs}${tickPl}${structuresFolder}</Document></kml>`;
   }
 
-  function buildKml(markers, path, tick){
-    const styles=`\n<Style id=\"path\"><LineStyle><color>ff33a0ff</color><width>3</width></LineStyle></Style>\n<Style id=\"label\"><IconStyle><scale>0</scale></IconStyle><LabelStyle><scale>1.3</scale></LabelStyle></Style>\n<Style id=\"tick\"><LineStyle><color>ff0000ff</color><width>2</width></LineStyle></Style>`;
-    const pathPm = path?.length?`\n<Placemark><name>Original Path</name><styleUrl>#path</styleUrl><LineString><tessellate>1</tessellate><coordinates>${path.map(p=>`${p.lon.toFixed(6)},${p.lat.toFixed(6)},0`).join(' ')}</coordinates></LineString></Placemark>`:'';
-    const labs = markers.map(m=>`\n<Placemark><name>${esc(m.name)}</name><styleUrl>#label</styleUrl><Point><coordinates>${m.lon.toFixed(6)},${m.lat.toFixed(6)},0</coordinates></Point></Placemark>`).join('');
-    const ticks = tick.map(t=>`\n<Placemark><styleUrl>#tick</styleUrl><LineString><tessellate>1</tessellate><coordinates>${t.map(p=>`${p.lon.toFixed(6)},${p.lat.toFixed(6)},0`).join(' ')}</coordinates></LineString></Placemark>`).join('');
-    return `<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<kml xmlns=\"http://www.opengis.net/kml/2.2\" xmlns:gx=\"http://www.google.com/kml/ext/2.2\"><Document><name>Chainage</name>${styles}${pathPm}${labs}${ticks}</Document></kml>`;
-  }
+  // download helper
+  function programmaticDownload(name, mime, text){ const blob=new Blob([text],{type:mime}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=name; a.rel='noopener'; a.style.display='none'; document.body.appendChild(a); a.click(); setTimeout(()=>{ try{URL.revokeObjectURL(url);}catch(_){} a.remove(); }, 6000); }
 
-  function blobUrl(type,txt){ return URL.createObjectURL(new Blob([txt],{type})); }
-
+  // main generate
   async function handleGenerate(){
     try{
-      setStatus('Parsing file…'); dlKml.disabled=true; dlKmz.disabled=true; saveKml.style.display='none'; saveKmz.style.display='none'; if(kmlUrl){URL.revokeObjectURL(kmlUrl);kmlUrl=null} if(kmzUrl){URL.revokeObjectURL(kmzUrl);kmzUrl=null}
+      setStatus('Parsing file…'); dlKml.disabled=true; dlKmz.disabled=true; saveKml.style.display='none'; saveKmz.style.display='none';
       const f=file.files?.[0]; if(!f){ setStatus('Choose KML/KMZ','warn'); return; }
-
-      let text;
-      if(f.name.toLowerCase().endsWith('.kmz')){
-        if(typeof JSZip==='undefined'){ setStatus('JSZip not loaded. KMZ unsupported in this browser. Use KML.','bad'); return; }
-        const buf=await f.arrayBuffer(); const zip=await JSZip.loadAsync(buf); let best=null,sz=-1; for(const p in zip.files){ if(p.toLowerCase().endsWith('.kml')){ const s=await zip.files[p].async('string'); if(s.length>sz){best=s;sz=s.length;} } }
-        if(!best) throw new Error('No KML inside KMZ'); text=best;
-      } else {
-        text = await f.text();
-      }
-
+      let text; if(f.name.toLowerCase().endsWith('.kmz')){ const buf=await f.arrayBuffer(); const zip=await JSZip.loadAsync(buf); let best=null,sz=-1; for(const p in zip.files){ if(p.toLowerCase().endsWith('.kml')){ const s=await zip.files[p].async('string'); if(s.length>sz){best=s;sz=s.length;} } } if(!best) throw new Error('No KML inside KMZ'); text=best; } else { text = await f.text(); }
       coords=parseKmlText(text);
-      if(!coords || coords.length<2){ setStatus('Could not read coordinates from file.','bad'); return; }
 
       const L=plen(coords); lenKm.textContent=(L/1000).toFixed(3)+' km';
       const intervalM=Math.max(1,Math.round(Number(interval.value||0)));
       const startM=parseMeters(startCh.value);
-      const inc=opts.value; const addS=(inc==='startEnd'||inc==='startOnly'); const addE=(inc==='startEnd'||inc==='endOnly');
-      const tickM=Math.max(0,Math.round(Number(tickLen.value||0)));
+      const tLen=Math.max(0,Math.round(Number(tickLen.value||0)));
 
-      const markers=[]; const ticks=[];
-      function pushAt(dist){
-        const pt=pAt(coords,dist);
-        markers.push({name:fmt(startM+dist),lat:pt.lat,lon:pt.lon});
-        if(tickM>0){
-          const i=segIndexAt(coords,dist);
-          const b=bearing(coords[i],coords[i+1]);
-          const n=(b+90)%360; const half=tickM/2;
-          const dx=d=> d*Math.sin(toRad(n));
-          const dy=d=> d*Math.cos(toRad(n));
-          const p1=offsetPoint(pt, dx(-half), dy(-half));
-          const p2=offsetPoint(pt, dx(half),  dy(half));
-          ticks.push([p1,p2]);
-        }
+      const markers=[], ticks=[]; let count=0;
+      function addAt(dist){ const pt=pAt(coords,dist); markers.push({name:fmt(startM+dist),lat:pt.lat,lon:pt.lon}); if(tLen>0){ const i=segIndexAt(coords,dist); const b=bearing(coords[i],coords[i+1]); const n=(b+90)%360; const half=tLen/2; const dx=d=> d*Math.sin(n*RAD), dy=d=> d*Math.cos(n*RAD); const p1=offsetPoint(pt, dx(-half), dy(-half)); const p2=offsetPoint(pt, dx(half), dy(half)); ticks.push([p1,p2]); } }
+      for(let d=0; d<=L; d+=intervalM){ addAt(d); if(d>0&&d<L) count++; }
+      ptCount.textContent=String(count); mkCount.textContent=String(markers.length);
+
+      const kmLabels=[]; if(kmName.value==='yes'){ const totalM = startM + L; const firstFullKm = Math.ceil(startM/1000)*1000; for(let m=firstFullKm; m<=Math.floor(totalM/1000)*1000; m+=1000){ const dist = m - startM; const pt=pAt(coords,dist); kmLabels.push({name:`${roadName.value} — ${fmt(m,'km+m')}`, lat:pt.lat, lon:pt.lon}); } }
+
+      const half = Math.max(0, Number(rowWidthEl.value||0))/2; const {left,right}=offsetPolyline(coords, half);
+
+      const rawStructs = parseStructuresCSV(csvCache); // CSV only
+      const structs = rawStructs.map(s=>{ const ch=parseMeters(s.chTxt); const clamped=Math.max(0, Math.min(L, ch - startM)); const pt=pAt(coords,clamped); return {ch, type:s.type, name:s.name, notes:s.notes, lat:pt.lat, lon:pt.lon}; }).sort((a,b)=>a.ch-b.ch);
+      stCount.textContent=String(structs.length);
+
+      const kml=buildKml({markers, ticks, path:coords, left, right, kmLabels, roadName:roadName.value, structs});
+      resultKml=kml; setStatus(`Done. Markers: ${markers.length}, Structures: ${structs.length}`,'ok');
+
+      const kmlBlob=new Blob([resultKml],{type:'application/vnd.google-earth.kml+xml'});
+      saveKml.href=URL.createObjectURL(kmlBlob); saveKml.style.display='inline-block'; dlKml.disabled=false;
+
+      if(window.JSZip){ const zip=new JSZip(); zip.file('doc.kml', resultKml); const blob=await zip.generateAsync({type:'blob'}); saveKmz.href=URL.createObjectURL(blob); saveKmz.style.display='inline-block'; dlKmz.disabled=false; } else {
+        setStatus('JSZip not loaded — KMZ button disabled. Use KML or Save KML.','warn');
       }
 
-      if(addS) pushAt(0);
-      let d=intervalM, c=0; while(d<=L){ pushAt(d); d+=intervalM; c++; }
-      if(addE) pushAt(L);
-
-      ptCount.textContent=String(c); mkCount.textContent=String(markers.length);
-      resultKml=buildKml(markers, coords, ticks);
-      setStatus(`Done. Markers: ${markers.length}`,'ok');
-
-      kmlUrl=blobUrl('application/vnd.google-earth.kml+xml', resultKml);
-      saveKml.href=kmlUrl; saveKml.style.display='inline-block';
-      dlKml.disabled=false;
-
-      if(window.JSZip){ const zip=new JSZip(); zip.file('doc.kml', resultKml); const blob=await zip.generateAsync({type:'blob'}); kmzUrl=URL.createObjectURL(blob); saveKmz.href=kmzUrl; saveKmz.style.display='inline-block'; dlKmz.disabled=false; }
     }catch(e){ console.error(e); setStatus('Error: '+(e.message||e),'bad'); }
   }
 
-  function programmaticDownload(name,type,content){ const a=document.createElement('a'); const url=typeof content==='string'?blobUrl(type,content):URL.createObjectURL(content); a.href=url; a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(url); a.remove();},500); }
-  function onDlKml(){ if(!resultKml) return; programmaticDownload('chainage.kml','application/vnd.google-earth.kml+xml',resultKml); }
-  async function onDlKmz(){ if(!resultKml||!window.JSZip) return; const zip=new JSZip(); zip.file('doc.kml', resultKml); const blob=await zip.generateAsync({type:'blob'}); programmaticDownload('chainage.kmz','application/vnd.google-earth.kmz',blob); }
+  function onDlKml(){ if(!resultKml) return setStatus('Generate first','warn'); programmaticDownload('chainage.kml','application/vnd.google-earth.kml+xml', resultKml); }
+  async function onDlKmz(){ if(!resultKml) return setStatus('Generate first','warn'); if(!window.JSZip) return setStatus('KMZ requires JSZip (CDN). Use Save KML instead.','warn'); const zip=new JSZip(); zip.file('doc.kml', resultKml); const blob=await zip.generateAsync({type:'blob'}); const a=document.createElement('a'); const url=URL.createObjectURL(blob); a.href=url; a.download='chainage.kmz'; document.body.appendChild(a); a.click(); setTimeout(()=>{ try{URL.revokeObjectURL(url);}catch(_){} a.remove(); }, 6000); }
+
+  structFile.addEventListener('change', async (e)=>{ try{ const f=e.target.files && e.target.files[0]; if(!f){ csvCache=''; return; } const text=await f.text(); csvCache=text; setStatus('CSV loaded ('+f.name+'), merged.','ok'); }catch(err){ console.error(err); setStatus('Error reading CSV: '+(err.message||err),'bad'); } });
+
+  function runSelfTests(){ const results=[]; const ok=(n,c)=>results.push([n,!!c]); try{ setStatus('Running self-tests…','warn'); ok('setStatus exists', typeof setStatus==='function'); ok('parseMeters 7+250', parseMeters('7+250')===7250); ok('parseMeters 8km', parseMeters('8km')===8000); ok('parseMeters 900', parseMeters('900')===900); const ss=smartSplitCSVLine('a,\"b,c\",d'); ok('CSV smart split', ss.length===3 && ss[1]==='b,c'); const kmlSample=`<?xml version=\"1.0\"?><kml xmlns=\"http://www.opengis.net/kml/2.2\"><Document><Placemark><LineString><coordinates>73.0,19.0,0 73.001,19.001,0</coordinates></LineString></Placemark></Document></kml>`; const pts=parseKmlText(kmlSample); ok('KML LineString parse', Array.isArray(pts) && pts.length===2); const pass=results.every(r=>r[1]); console.table(results.map(r=>({test:r[0], pass:r[1]}))); setStatus((pass?'All tests passed':'Some tests failed')+` (tests: ${results.length})`, pass?'ok':'bad'); }catch(err){ console.error(err); setStatus('Self-test error: '+err,'bad'); } }
+  selfTestBtn.addEventListener('click', runSelfTests);
 
   genBtn.addEventListener('click', handleGenerate);
   dlKml.addEventListener('click', onDlKml);
